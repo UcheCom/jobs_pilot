@@ -1,0 +1,5 @@
+[auth]
+allowed_redirect_urls = [
+  "http://localhost:3000/callback",
+  "https://63xj5vi7.insforge.site/callback",
+]

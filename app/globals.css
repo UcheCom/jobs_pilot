@@ -83,3 +83,38 @@ body {
   color: var(--color-text-primary);
   font-family: var(--font-sans);
 }
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+.landing-hero-texture {
+  background-image: url("/images/hero-texture.png");
+  background-position: center;
+  background-size: cover;
+}
+
+.landing-divider {
+  min-height: 96px;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  background-color: var(--color-surface);
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0,
+    transparent 5px,
+    var(--color-border) 5px,
+    var(--color-border) 6px
+  );
+  opacity: 0.7;
+}
+
+@media (max-width: 767px) {
+  .landing-divider {
+    min-height: 56px;
+  }
+}

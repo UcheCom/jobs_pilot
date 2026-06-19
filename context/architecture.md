@@ -186,7 +186,7 @@ GPT-4o processes content
         ↓
 New PDF uploaded to InsForge Storage
         ↓
-URL saved to profiles table
+Returned URL and object key saved to profiles table
 ```
 
 ---
@@ -218,7 +218,10 @@ URL saved to profiles table
 | portfolio_url       | text        |                                              |
 | work_authorization  | text        | citizen / permanent_resident / visa_required |
 | resume_pdf_url      | text        | InsForge Storage URL of current resume       |
+| resume_pdf_key      | text        | InsForge Storage key of current resume       |
 | is_complete         | boolean     | True when all required fields filled         |
+| completion_percentage | integer   | Profile completion from 0 to 100              |
+| missing_fields      | text[]      | Required profile fields not yet completed     |
 | created_at          | timestamptz |                                              |
 | updated_at          | timestamptz |                                              |
 
@@ -227,7 +230,7 @@ URL saved to profiles table
 | Column             | Type        | Notes                        |
 | ------------------ | ----------- | ---------------------------- |
 | id                 | uuid        |                              |
-| user_id            | uuid        | References profiles          |
+| user_id            | uuid        | References auth.users        |
 | status             | text        | running / completed / failed |
 | job_title_searched | text        |                              |
 | location_searched  | text        |                              |
@@ -241,7 +244,7 @@ URL saved to profiles table
 | ------------------ | ----------- | ---------------------------------------------- |
 | id                 | uuid        |                                                |
 | run_id             | uuid        | References agent_runs — null if from URL input |
-| user_id            | uuid        | References profiles                            |
+| user_id            | uuid        | References auth.users                          |
 | source             | text        | search / url                                   |
 | source_url         | text        | Original job listing URL                       |
 | external_apply_url | text        | Direct company apply URL                       |
@@ -269,7 +272,7 @@ URL saved to profiles table
 | ---------- | ----------- | -------------------------------- |
 | id         | uuid        |                                  |
 | run_id     | uuid        | References agent_runs            |
-| user_id    | uuid        | References profiles              |
+| user_id    | uuid        | References auth.users            |
 | message    | text        | Human readable log entry         |
 | level      | text        | info / success / warning / error |
 | job_id     | uuid        | Optional — related job           |
@@ -279,11 +282,12 @@ URL saved to profiles table
 
 ## InsForge Storage
 
-| Bucket  | Path                         | Contents                  |
-| ------- | ---------------------------- | ------------------------- |
-| resumes | resumes/{user_id}/resume.pdf | Current active resume PDF |
+| Bucket  | Object key                  | Contents                  |
+| ------- | --------------------------- | ------------------------- |
+| resumes | {user_id}/resume.pdf        | Current active resume PDF |
 
-Access: authenticated users only, own files only.
+Access: private bucket. Authenticated users can access only objects they own
+whose first path segment matches their authenticated user ID.
 
 ---
 
@@ -293,7 +297,7 @@ Access: authenticated users only, own files only.
 - Methods: Google OAuth, GitHub OAuth
 - Protected routes: /dashboard, /profile, /find-jobs, /find-jobs/[id]
 - Public routes: /, /login
-- Middleware in middleware.ts checks session on every protected route
+- Proxy in proxy.ts refreshes and checks the session on every protected route
 - On login → redirect to /dashboard
 
 ---
@@ -305,33 +309,16 @@ Two separate InsForge instances — never mix them:
 ```typescript
 // lib/insforge-client.ts
 // Browser-side — used in client components for auth state
-import { createBrowserClient } from "@insforge/ssr";
-export const insforge = createBrowserClient(
-  process.env.NEXT_PUBLIC_INSFORGE_URL!,
-  process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-);
+import { createBrowserClient } from "@insforge/sdk/ssr";
+export const insforge = createBrowserClient();
 
 // lib/insforge-server.ts
 // Server-side — used in API routes, Server Actions, agent code
-import { createServerClient } from "@insforge/ssr";
+import { createServerClient } from "@insforge/sdk/ssr";
 import { cookies } from "next/headers";
 
 export const createInsforgeServer = async () => {
-  const cookieStore = await cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_INSFORGE_URL!,
-    process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: (cookiesToSet) => {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options),
-          );
-        },
-      },
-    },
-  );
+  return createServerClient({ cookies: await cookies() });
 };
 ```
 

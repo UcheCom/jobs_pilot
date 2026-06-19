@@ -222,14 +222,24 @@ const insforge = await createInsforgeServer();
 
 All PostHog events must use these exact event names. Never invent new event names without adding them here first.
 
-| Event                | When                                       | Key Properties             |
-| -------------------- | ------------------------------------------ | -------------------------- |
-| `job_search_started` | Find Jobs button clicked                   | userId, jobTitle, location |
-| `job_found`          | Each job discovered and saved              | userId, source, matchScore |
-| `profile_completed`  | User saves complete profile for first time | userId                     |
-| `company_researched` | Company research dossier generated         | userId, jobId, company     |
+| Event                              | When                                       | Key Properties             |
+| ---------------------------------- | ------------------------------------------ | -------------------------- |
+| `sign_in_initiated`                | OAuth provider sign-in starts              | provider                   |
+| `sign_in_start_failed`             | OAuth redirect initiation fails            | provider, reason           |
+| `sign_in_completed`                | OAuth callback succeeds                     | none                       |
+| `sign_in_failed`                   | OAuth callback fails                        | stage, reason              |
+| `hero_cta_clicked`                 | User clicks a hero CTA                      | label                      |
+| `final_cta_clicked`                | User clicks a final-section CTA             | label                      |
+| `dashboard_viewed`                 | Authenticated user lands on dashboard      | userId                     |
+| `server_oauth_exchange_succeeded`  | Server OAuth exchange succeeds              | $session_id?               |
+| `server_oauth_exchange_failed`     | Server OAuth exchange fails                 | reason, $session_id?       |
+| `server_user_signed_out`           | Server clears an authenticated session      | userId                     |
+| `job_search_started`               | Find Jobs button clicked                    | userId, jobTitle, location |
+| `job_found`                        | Each job discovered and saved              | userId, source, matchScore |
+| `profile_completed`                | User saves complete profile for first time | userId                     |
+| `company_researched`               | Company research dossier generated         | userId, jobId, company     |
 
-These four events are the only events in this project. Do not add more without updating this list first.
+These are the only events in this project. Do not add more without updating this list first.
 
 `job_found` powers the Jobs Found Over Time and Match Score Distribution dashboard charts.
 `company_researched` powers the Company Research Activity dashboard chart.
@@ -251,6 +261,7 @@ All environment variables defined in `.env.local` for development. Never hardcod
 | `ADZUNA_APP_ID`                 | lib/adzuna.ts          |
 | `ADZUNA_APP_KEY`                | lib/adzuna.ts          |
 | `NEXT_PUBLIC_POSTHOG_KEY`       | lib/posthog-client.ts  |
+| `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` | lib/posthog-client.ts  |
 | `NEXT_PUBLIC_POSTHOG_HOST`      | lib/posthog-client.ts  |
 
 `NEXT_PUBLIC_` prefix means the variable is exposed to the browser. Never add `NEXT_PUBLIC_` to secret keys.
@@ -305,7 +316,7 @@ Never install a new package without a clear reason. Before installing anything c
 
 Approved dependencies for this project:
 
-- `@insforge/ssr` — InsForge client
+- `@insforge/sdk` — InsForge client and SSR auth helpers
 - `@browserbasehq/sdk` — Browserbase sessions
 - `@browserbasehq/stagehand` — AI browser control
 - `openai` — GPT-4o API

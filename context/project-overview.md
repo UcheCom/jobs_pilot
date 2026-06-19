@@ -207,6 +207,16 @@ Full width layout on all pages. No sidebar.
 ## PostHog Events
 
 ```typescript
+sign_in_initiated; // { provider }
+sign_in_start_failed; // { provider, reason }
+sign_in_completed;
+sign_in_failed; // { stage, reason }
+hero_cta_clicked; // { label }
+final_cta_clicked; // { label }
+dashboard_viewed; // { userId }
+server_oauth_exchange_succeeded; // { $session_id? }
+server_oauth_exchange_failed; // { reason, $session_id? }
+server_user_signed_out; // { userId }
 job_search_started; // { userId, jobTitle, location }
 job_found; // { userId, source, matchScore }
 profile_completed; // { userId }

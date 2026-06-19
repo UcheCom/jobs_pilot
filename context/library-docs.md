@@ -36,35 +36,18 @@ Two separate instances — never mix them:
 
 ```typescript
 // lib/insforge-client.ts — browser context only
-import { createBrowserClient } from "@insforge/ssr";
+import { createBrowserClient } from "@insforge/sdk/ssr";
 
-export const insforge = createBrowserClient(
-  process.env.NEXT_PUBLIC_INSFORGE_URL!,
-  process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-);
+export const insforge = createBrowserClient();
 ```
 
 ```typescript
 // lib/insforge-server.ts — server context only
-import { createServerClient } from "@insforge/ssr";
+import { createServerClient } from "@insforge/sdk/ssr";
 import { cookies } from "next/headers";
 
 export const createInsforgeServer = async () => {
-  const cookieStore = await cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_INSFORGE_URL!,
-    process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: (cookiesToSet) => {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options),
-          );
-        },
-      },
-    },
-  );
+  return createServerClient({ cookies: await cookies() });
 };
 ```
 
@@ -88,6 +71,15 @@ const {
 } = await insforge.auth.getUser();
 if (!user) redirect("/login");
 ```
+
+OAuth uses PKCE. The login UI requests an OAuth URL with
+`skipBrowserRedirect: true`, stores the returned `codeVerifier` in
+`sessionStorage`, and redirects to the provider. `/callback` sends the returned
+`insforge_code` and verifier to `/api/auth/callback`; that route performs the
+server-mode exchange and writes the InsForge access and refresh cookies.
+
+`proxy.ts` uses `updateSession()` from `@insforge/sdk/ssr` before checking
+protected routes. Next.js 16 calls this file `proxy.ts`, not `middleware.ts`.
 
 ---
 
@@ -556,8 +548,9 @@ import posthog from "posthog-js";
 export function initPostHog() {
   if (typeof window !== "undefined") {
     posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
-      api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST!,
+      api_host: "/ingest",
       capture_pageview: false, // manual pageview tracking
+      capture_exceptions: true,
     });
   }
 }
@@ -599,6 +592,10 @@ await posthog.shutdown(); // required — ensures event is sent
 - `flushAt: 1` and `flushInterval: 0` always set on server client
 - Event names must match exactly the list in `code-standards.md`
 - Always include `userId` as a property on every server-side event
+- Browser and server setup prefer `NEXT_PUBLIC_POSTHOG_KEY`, but accept `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` for compatibility with the PostHog wizard.
+- Missing PostHog env vars should no-op quietly in browser code so local dev works without analytics.
+- Browser events use the `/ingest` reverse proxy configured in `next.config.ts`; server events use `NEXT_PUBLIC_POSTHOG_HOST` directly.
+- Analytics failures must never interrupt authentication or product mutations.
 - Call `posthog.identify(userId)` after login on client side
 - Call `posthog.reset()` on logout on client side
 
